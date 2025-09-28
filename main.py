@@ -54,20 +54,25 @@ class ImageFetcher:
             return False
     
     def fetch_images(self, query, num_images=5, download_dir="images"):
-        os.makedirs(download_dir, exist_ok=True)
+        class_dir = os.path.join(download_dir, query.replace(' ', '_'))
+        os.makedirs(class_dir, exist_ok=True)
         
         urls = self.search_bing(query, num_images)
         if not urls:
-            print("No images found!")
+            print(f"No images found for {query}!")
             return
         
         successful = 0
-        for i, url in enumerate(tqdm(urls, desc="Downloading images")):
-            filename = os.path.join(download_dir, f"{query.replace(' ', '_')}_{i+1}.jpg")
+        for i, url in enumerate(tqdm(urls, desc=f"Downloading {query}")):
+            filename = os.path.join(class_dir, f"{i+1}.jpg")
             if self.download_image(url, filename):
                 successful += 1
         
-        print(f"Downloaded {successful}/{len(urls)} images")
+        print(f"{query}: Downloaded {successful}/{len(urls)} images")
+    
+    def fetch_multiple_classes(self, classes, num_images=5, download_dir="images"):
+        for class_name in tqdm(classes, desc="Processing classes"):
+            self.fetch_images(class_name, num_images, download_dir)
     
     def close(self):
         self.driver.quit()
@@ -76,7 +81,9 @@ if __name__ == "__main__":
     fetcher = ImageFetcher(headless=True)
     
     try:
-        fetcher.fetch_images("โรคใบขาวในอ้อย", num_images=100)
+        # fetcher.fetch_images("โรคใบขาวในอ้อย", num_images=100)
+        diseases = ["โรคใบขาวในอ้อย", "โรคแส้ดำในอ้อย", "โรคเน่าคออ้อย","โรคใบจุดวงแหวนในอ้อย"]
+        fetcher.fetch_multiple_classes(diseases, num_images=20)
     except KeyboardInterrupt:
         print("\nStopped by user")
     finally:
