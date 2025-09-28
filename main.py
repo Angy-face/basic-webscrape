@@ -1,0 +1,78 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+import requests
+import os
+import time
+from urllib.parse import urlparse
+from tqdm import tqdm
+
+class ImageFetcher:
+    def __init__(self, headless=True):
+        options = Options()
+        if headless:
+            options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        
+        self.driver = webdriver.Chrome(options=options)
+        self.wait = WebDriverWait(self.driver, 10)
+    
+    def search_bing(self, query, num_images=5):
+        self.driver.get("https://www.bing.com/images")
+        search_box = self.wait.until(EC.presence_of_element_located((By.NAME, "q")))
+        search_box.send_keys(query + Keys.RETURN)
+        time.sleep(3)
+        
+        images = self.driver.find_elements(By.CSS_SELECTOR, "img.mimg")
+        urls = []
+        for img in images[:num_images*2]:
+            url = img.get_attribute("src")
+            if url and url.startswith("http") and len(url) > 50:
+                urls.append(url)
+                if len(urls) >= num_images:
+                    break
+        return urls
+    
+    def download_image(self, url, filename):
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            return True
+        except:
+            return False
+    
+    def fetch_images(self, query, num_images=5, download_dir="images"):
+        os.makedirs(download_dir, exist_ok=True)
+        
+        urls = self.search_bing(query, num_images)
+        if not urls:
+            print("No images found!")
+            return
+        
+        successful = 0
+        for i, url in enumerate(tqdm(urls, desc="Downloading images")):
+            filename = os.path.join(download_dir, f"{query.replace(' ', '_')}_{i+1}.jpg")
+            if self.download_image(url, filename):
+                successful += 1
+        
+        print(f"Downloaded {successful}/{len(urls)} images")
+    
+    def close(self):
+        self.driver.quit()
+
+if __name__ == "__main__":
+    fetcher = ImageFetcher(headless=True)
+    
+    try:
+        fetcher.fetch_images("cat", num_images=10)
+    except KeyboardInterrupt:
+        print("\nStopped by user")
+    finally:
+        fetcher.close()
