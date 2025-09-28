@@ -27,9 +27,14 @@ class ImageFetcher:
         search_box.send_keys(query + Keys.RETURN)
         time.sleep(3)
         
+        # Scroll to load more images
+        for _ in range(max(1, num_images // 20)):
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+        
         images = self.driver.find_elements(By.CSS_SELECTOR, "img.mimg")
         urls = []
-        for img in images[:num_images*2]:
+        for img in images:
             url = img.get_attribute("src")
             if url and url.startswith("http") and len(url) > 50:
                 urls.append(url)
@@ -71,7 +76,7 @@ if __name__ == "__main__":
     fetcher = ImageFetcher(headless=True)
     
     try:
-        fetcher.fetch_images("cat", num_images=10)
+        fetcher.fetch_images("โรคใบขาวในอ้อย", num_images=100)
     except KeyboardInterrupt:
         print("\nStopped by user")
     finally:
